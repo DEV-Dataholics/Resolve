@@ -481,4 +481,28 @@ class TicketController extends BaseController
             'comment' => $newComment
         ]);
     }
+
+    public function uploadAttachment()
+    {
+        $file = $this->request->getFile('image');
+        if (!$file || !$file->isValid()) {
+            return $this->fail('Archivo inválido o no se recibió imagen');
+        }
+
+        // Validate it's an image
+        if (!str_starts_with($file->getMimeType(), 'image/')) {
+            return $this->fail('Solo se permiten imágenes');
+        }
+
+        if (!$file->hasMoved()) {
+            $newName = $file->getRandomName();
+            $file->move(FCPATH . 'uploads/tickets', $newName);
+            
+            return $this->respond([
+                'url' => '/uploads/tickets/' . $newName
+            ]);
+        }
+        
+        return $this->fail('No se pudo guardar la imagen');
+    }
 }

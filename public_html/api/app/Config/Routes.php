@@ -41,6 +41,7 @@ $routes->group('api', ['filter' => 'auth'], static function ($routes) {
     $routes->get('tickets/(:num)',     'TicketController::show/$1');
     $routes->put('tickets/(:num)',     'TicketController::update/$1');
     $routes->post('tickets/(:num)/comment', 'TicketController::comment/$1');
+    $routes->post('tickets/upload', 'TicketController::uploadAttachment');
     $routes->get('teams', 'AdminController::listTeams', ['filter' => 'internal']);
 
     // Admin routes (admin only)

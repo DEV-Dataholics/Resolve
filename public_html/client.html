@@ -158,7 +158,7 @@
 
                 <!-- Description -->
                 <div class="p-6 border-b border-slate-800 bg-slate-900/50">
-                    <p class="text-sm text-slate-300 leading-relaxed" x-text="selectedTicket?.description"></p>
+                    <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap break-words" x-html="renderComment(selectedTicket?.description)"></div>
                 </div>
 
                 <!-- Chat Thread -->
@@ -168,7 +168,7 @@
                             <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0" x-text="comment.author_name?.[0] ?? '?'"></div>
                             <div :class="comment.author_id === user?.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'"
                                  class="max-w-md px-4 py-3 rounded-2xl text-sm leading-relaxed">
-                                <p x-text="comment.text"></p>
+                                <div class="whitespace-pre-wrap break-words" x-html="renderComment(comment.text)"></div>
                                 <p :class="comment.author_id === user?.id ? 'text-blue-200' : 'text-slate-500'"
                                    class="text-xs mt-1" x-text="formatDate(comment.created_at)"></p>
                             </div>
@@ -180,13 +180,14 @@
                 </div>
 
                 <!-- Reply Box -->
-                <div class="p-4 border-t border-slate-800 bg-slate-900" x-show="selectedTicket?.status !== 'closed'">
+                <div class="p-4 border-t border-slate-800 bg-slate-900 relative" x-show="selectedTicket?.status !== 'closed'">
                     <form @submit.prevent="submitComment()" class="flex gap-3">
-                        <input type="text" x-model="newComment" placeholder="Escribe tu mensaje..."
+                        <input type="text" x-model="newComment" @paste="handlePaste($event)" placeholder="Escribe tu mensaje (puedes pegar imágenes aquí)..."
                                class="flex-1 bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all">
-                        <button type="submit" :disabled="!newComment.trim()"
+                        <button type="submit" :disabled="!newComment.trim() || uploadingImage"
                                 class="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all">
-                            Enviar
+                            <span x-show="!uploadingImage">Enviar</span>
+                            <span x-show="uploadingImage">Subiendo...</span>
                         </button>
                     </form>
                 </div>
@@ -221,9 +222,9 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1.5">Descripción detallada <span class="text-red-400">*</span></label>
-                    <textarea x-model="newTicket.description" required rows="4"
+                    <textarea x-model="newTicket.description" required rows="4" @paste="handlePasteNewTicket($event)"
                               class="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                              placeholder="Incluye pasos para reproducir el error, capturas, etc."></textarea>
+                              placeholder="Incluye pasos para reproducir el error, capturas, etc. (puedes pegar imágenes aquí)"></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1.5">Prioridad</label>
@@ -262,6 +263,7 @@
             newComment: '',
             formError: '',
             submittingTicket: false,
+            uploadingImage: false,
             newTicket: { title: '', description: '', priority: 'medium' },
 
             async init() {
@@ -301,6 +303,78 @@
                     const el = document.getElementById('chat-container');
                     if (el) el.scrollTop = el.scrollHeight;
                 });
+            },
+
+            async handlePaste(e) {
+                const items = (e.clipboardData || window.clipboardData).items;
+                for (let index in items) {
+                    const item = items[index];
+                    if (item.kind === 'file' && item.type.startsWith('image/')) {
+                        const file = item.getAsFile();
+                        if (!file) continue;
+                        
+                        e.preventDefault();
+                        this.uploadingImage = true;
+                        
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        
+                        try {
+                            const res = await fetch(`${API}/tickets/upload`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.url) {
+                                    this.newComment = this.newComment + `\n![imagen](${data.url})\n`;
+                                }
+                            } else {
+                                alert('Error al subir la imagen');
+                            }
+                        } catch (err) {
+                            alert('Error de red al subir la imagen');
+                        } finally {
+                            this.uploadingImage = false;
+                        }
+                    }
+                }
+            },
+
+            async handlePasteNewTicket(e) {
+                const items = (e.clipboardData || window.clipboardData).items;
+                for (let index in items) {
+                    const item = items[index];
+                    if (item.kind === 'file' && item.type.startsWith('image/')) {
+                        const file = item.getAsFile();
+                        if (!file) continue;
+                        
+                        e.preventDefault();
+                        this.uploadingImage = true;
+                        
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        
+                        try {
+                            const res = await fetch(`${API}/tickets/upload`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.url) {
+                                    this.newTicket.description = this.newTicket.description + `\n![imagen](${data.url})\n`;
+                                }
+                            } else {
+                                alert('Error al subir la imagen');
+                            }
+                        } catch (err) {
+                            alert('Error de red al subir la imagen');
+                        } finally {
+                            this.uploadingImage = false;
+                        }
+                    }
+                }
             },
 
             async submitComment() {
@@ -375,6 +449,14 @@
             statusLabel(s) {
                 return { new:'Nuevo', in_progress:'En Progreso', resolved:'Resuelto', closed:'Cerrado' }[s] || s;
             },
+            
+            renderComment(text) {
+                if (!text) return '';
+                let safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+                safeText = safeText.replace(/!\[.*?\]\((.*?)\)/g, '<img src="$1" class="max-w-full rounded-lg mt-2 cursor-pointer hover:opacity-90" onclick="window.open(this.src,\'_blank\')" />');
+                return safeText;
+            },
+
             formatDate(d) {
                 if (!d) return '';
                 return new Date(d).toLocaleString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
