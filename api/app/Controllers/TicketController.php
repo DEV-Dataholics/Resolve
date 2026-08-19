@@ -482,6 +482,50 @@ class TicketController extends BaseController
         ]);
     }
 
+    public function updateComment($commentId = null)
+    {
+        $text = $this->request->getVar('text');
+        if (!$text || !trim($text)) {
+            return $this->fail('El comentario no puede estar vacío');
+        }
+
+        $db = \Config\Database::connect();
+        $comment = $db->table('comments')->where('id', $commentId)->get()->getRow();
+
+        if (!$comment) {
+            return $this->failNotFound('Comentario no encontrado');
+        }
+
+        if ($comment->author_id != session()->get('user_id') && session()->get('role') !== 'admin') {
+            return $this->failForbidden('No tienes permiso para editar este comentario');
+        }
+
+        $db->table('comments')->where('id', $commentId)->update([
+            'text' => $text,
+            'updated_at' => date('Y-m-d H:i:s') // Assuming there is an updated_at, if not it's fine
+        ]);
+
+        return $this->respond(['message' => 'Comentario actualizado']);
+    }
+
+    public function deleteComment($commentId = null)
+    {
+        $db = \Config\Database::connect();
+        $comment = $db->table('comments')->where('id', $commentId)->get()->getRow();
+
+        if (!$comment) {
+            return $this->failNotFound('Comentario no encontrado');
+        }
+
+        if ($comment->author_id != session()->get('user_id') && session()->get('role') !== 'admin') {
+            return $this->failForbidden('No tienes permiso para eliminar este comentario');
+        }
+
+        $db->table('comments')->where('id', $commentId)->delete();
+
+        return $this->respondDeleted(['message' => 'Comentario eliminado']);
+    }
+
     public function uploadAttachment()
     {
         $file = $this->request->getFile('image');
