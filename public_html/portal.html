@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Soporte | Dataholics Resolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        [x-cloak] { display: none !important; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .animate-pulse-soft { animation: pulse-soft 2s ease infinite; }
+    </style>
+</head>
+<body class="bg-slate-950 flex items-center justify-center min-h-screen p-4" x-cloak x-data="portalHandler()" x-init="init()">
+
+    <!-- Estado: cargando slug -->
+    <div x-show="state === 'loading'" class="text-center">
+        <div class="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-slate-500 text-sm">Cargando portal...</p>
+    </div>
+
+    <!-- Estado: portal no encontrado -->
+    <div x-show="state === 'not_found'" class="max-w-md w-full text-center animate-fade-in-up">
+        <div class="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <svg class="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white mb-2">Portal no encontrado</h1>
+        <p class="text-slate-400 text-sm mb-6">El enlace de soporte que ingresaste no corresponde a ninguna empresa registrada.</p>
+        <a href="/index.html" class="inline-block text-blue-400 text-sm hover:text-blue-300 transition-colors">← Ir al login general</a>
+    </div>
+
+    <!-- Estado: login -->
+    <div x-show="state === 'ready'" class="w-full max-w-md animate-fade-in-up">
+
+        <!-- Card -->
+        <div class="bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
+
+            <!-- Header de empresa -->
+            <div class="relative bg-gradient-to-br from-blue-600/20 to-slate-900 border-b border-slate-700/60 px-8 py-8">
+                <!-- Decoración de fondo -->
+                <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+                    <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                </div>
+
+                <div class="relative">
+                    <!-- Logo de empresa (inicial/imagen) -->
+                    <template x-if="!company?.logo_url">
+                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-blue-500/30 mb-4"
+                             :style="company?.brand_color ? 'background-color: ' + company.brand_color : 'background: linear-gradient(to bottom right, #3b82f6, #4f46e5)'"
+                             x-text="company?.name?.[0]?.toUpperCase() || '?'"></div>
+                    </template>
+                    <template x-if="company?.logo_url">
+                        <img :src="company.logo_url" alt="Logo" class="w-auto h-14 mb-4 object-contain">
+                    </template>
+
+                    <h1 class="text-xl font-bold text-white" x-text="company?.name || 'Portal'"></h1>
+                    <p class="text-slate-400 text-sm mt-1">Portal de Soporte Técnico</p>
+                </div>
+            </div>
+
+            <!-- Formulario de login -->
+            <form @submit.prevent="submitLogin()" class="p-8 space-y-5">
+
+                <div class="space-y-1.5">
+                    <label class="block text-sm font-medium text-slate-300">Correo electrónico</label>
+                    <input type="email" x-model="email" required
+                           id="portal-email"
+                           class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                           placeholder="tu@correo.com">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-sm font-medium text-slate-300">Contraseña</label>
+                        <a href="/forgot-password.html" class="text-xs text-blue-400 hover:text-blue-300 transition-colors">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    <div class="relative">
+                        <input :type="showPassword ? 'text' : 'password'" x-model="password" required
+                               id="portal-password"
+                               class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all pr-12"
+                               placeholder="••••••••">
+                        <button type="button" @click="showPassword = !showPassword"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1">
+                            <svg x-show="!showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Error -->
+                <div x-show="errorMessage" x-transition
+                     class="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                    <svg class="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-red-400 text-sm" x-text="errorMessage"></p>
+                </div>
+
+                <!-- Botón submit -->
+                <button type="submit" id="portal-submit"
+                        :disabled="loading"
+                        :style="company?.brand_color ? 'background-color: ' + company.brand_color : ''"
+                        :class="company?.brand_color ? 'w-full hover:brightness-110 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2' : 'w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2'">
+                    <svg x-show="loading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <span x-text="loading ? 'Autenticando...' : 'Iniciar sesión'"></span>
+                </button>
+
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 space-y-2">
+            <p class="text-slate-600 text-xs">
+                Portal de soporte para clientes de
+                <span class="text-slate-500" x-text="company?.name || '...'"></span>
+            </p>
+            <p class="text-slate-700 text-xs">
+                Powered by <span class="text-slate-600 font-medium">Dataholics Resolve</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+    const API = '/api';
+
+    function portalHandler() {
+        return {
+            state: 'loading', // loading | ready | not_found
+            company: null,
+            email: '',
+            password: '',
+            showPassword: false,
+            loading: false,
+            errorMessage: '',
+
+            async init() {
+                // Extraer slug de la URL: /portal/mi-empresa
+                const slug = this.getSlugFromUrl();
+                if (!slug) {
+                    this.state = 'not_found';
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API}/portal/${slug}`);
+                    if (!res.ok) {
+                        this.state = 'not_found';
+                        return;
+                    }
+                    this.company = await res.json();
+                    document.title = `${this.company.name} | Soporte — Dataholics Resolve`;
+                    this.state = 'ready';
+                } catch (e) {
+                    this.state = 'not_found';
+                }
+            },
+
+            getSlugFromUrl() {
+                // Soporta: /portal/mi-empresa (via .htaccess rewrite)
+                // o query: ?slug=mi-empresa (fallback)
+                const parts = window.location.pathname.split('/');
+                const idx   = parts.indexOf('portal');
+                if (idx !== -1 && parts[idx + 1]) {
+                    return parts[idx + 1];
+                }
+                const params = new URLSearchParams(window.location.search);
+                return params.get('slug') || null;
+            },
+
+            async submitLogin() {
+                this.loading = true;
+                this.errorMessage = '';
+
+                try {
+                    const res = await fetch(`${API}/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: this.email, password: this.password })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        const role = data.user.role;
+                        if (role === 'client') {
+                            window.location.href = '/client.html';
+                        } else {
+                            window.location.href = '/servicedesk.html';
+                        }
+                    } else {
+                        this.errorMessage = data.message || 'Credenciales incorrectas';
+                    }
+                } catch (e) {
+                    this.errorMessage = 'No se pudo conectar con el servidor. Intenta más tarde.';
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }
+    </script>
+</body>
+</html>

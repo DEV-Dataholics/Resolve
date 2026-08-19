@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataholics</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    backgroundImage: {
+                        'dot-pattern': 'radial-gradient(circle, #334155 1px, transparent 1px)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+        }
+        .bg-dot-pattern {
+            background-size: 20px 20px;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="antialiased text-slate-200 h-screen w-screen overflow-hidden flex bg-slate-900" x-data="loginHandler()">
+
+    <!-- Left Panel (Brand & Visuals) -->
+    <div class="hidden lg:flex lg:w-1/2 bg-slate-800 bg-dot-pattern flex-col items-center justify-center relative p-12 border-r border-slate-700">
+        <!-- Optional overlay gradient for depth -->
+        <div class="absolute inset-0 bg-gradient-to-br from-slate-900/80 to-slate-800/20 pointer-events-none"></div>
+
+        <div class="relative z-10 w-full max-w-md flex flex-col items-center">
+            
+            <!-- Icon / Logo Area -->
+            <div class="mb-6">
+                <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-white text-2xl font-bold tracking-[0.2em] mb-10 text-center uppercase">Dataholics Resolve</h1>
+
+            <!-- Image Card -->
+            <div class="bg-slate-700 rounded-[2rem] p-3 shadow-2xl w-full aspect-square relative overflow-hidden ring-4 ring-slate-600/50 mb-8 transform transition-transform hover:scale-[1.02] duration-500">
+                <!-- Using the generated image -->
+                <img src="./dataholics_illustration.png" alt="Dataholics Tech Illustration" class="w-full h-full object-cover rounded-3xl" />
+            </div>
+
+            <!-- Pagination Dots -->
+            <div class="flex space-x-3">
+                <div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel (Login Form) -->
+    <div class="w-full lg:w-1/2 flex flex-col items-center justify-center bg-slate-900 p-8 sm:p-12 lg:p-24 relative overflow-y-auto">
+        
+        <div class="w-full max-w-sm">
+            
+            <!-- Headers -->
+            <div class="mb-10 text-center lg:text-left">
+                <h2 class="text-3xl font-extrabold text-white mb-2">Acceso Exclusivo</h2>
+                <p class="text-sm font-semibold text-blue-400 uppercase tracking-wide">Plataforma de Resolución Resolve</p>
+            </div>
+
+            <!-- Error Message -->
+            <div x-show="errorMessage" x-transition.opacity
+                 class="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm font-medium flex items-center space-x-2"
+                 style="display: none;">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span x-text="errorMessage"></span>
+            </div>
+
+            <!-- Form -->
+            <form @submit.prevent="submitLogin" class="space-y-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Correo Electrónico</label>
+                    <input type="email" x-model="email" required
+                           class="w-full px-5 py-4 bg-slate-800 border-2 border-slate-700 rounded-xl text-white font-medium placeholder-slate-500 focus:bg-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
+                           placeholder="tu@correo.com">
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Contraseña</label>
+                        <a href="/forgot-password.html" class="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    <input type="password" x-model="password" required
+                           class="w-full px-5 py-4 bg-slate-800 border-2 border-slate-700 rounded-xl text-white font-medium placeholder-slate-500 focus:bg-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
+                           placeholder="••••••••">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" 
+                            :disabled="loading"
+                            class="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!loading">INGRESAR AL SISTEMA</span>
+                        <svg x-show="!loading" class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        
+                        <span x-show="loading" class="flex items-center space-x-2" style="display: none;">
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>CARGANDO...</span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="absolute bottom-8 text-center w-full max-w-sm text-xs text-slate-500">
+            <p class="font-semibold uppercase tracking-wider mb-1 text-slate-600">Sistema Dataholics OS v1.0 — 2026</p>
+            <p>Plataforma Privada — Uso Restringido</p>
+        </div>
+    </div>
+
+    <script>
+        function loginHandler() {
+            return {
+                email: '',
+                password: '',
+                loading: false,
+                errorMessage: '',
+                async submitLogin() {
+                    this.loading = true;
+                    this.errorMessage = '';
+
+                    try {
+                        const response = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: this.email, password: this.password })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            const role = result.user.role;
+                            if (role === 'client') {
+                                window.location.href = '/client.html';
+                            } else {
+                                window.location.href = '/servicedesk.html';
+                            }
+                        } else {
+                            this.errorMessage = result.message || 'Error al iniciar sesión';
+                        }
+                    } catch (error) {
+                        this.errorMessage = 'No se pudo conectar con el servidor';
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

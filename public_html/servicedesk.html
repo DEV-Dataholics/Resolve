@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServiceDesk | Dataholics Resolve</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        [x-cloak] { display: none !important; }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #0f172a; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100" x-cloak x-data="sdDashboard()" x-init="init()">
+
+    <div x-show="!user" class="flex h-screen items-center justify-center">
+        <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="user" class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+            <div class="p-5 border-b border-slate-800">
+                <h1 class="text-lg font-bold text-white">Dataholics <span class="text-blue-500">Resolve</span></h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+                    <p class="text-xs text-slate-400" x-text="user?.name"></p>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-3 space-y-1">
+                <button @click="activeView = 'all'"
+                        :class="activeView === 'all' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+                        class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        Todos los Tickets
+                    </span>
+                    <span x-show="stats.total" class="bg-slate-700/50 text-slate-300 text-xs px-2 py-0.5 rounded-full" x-text="stats.total"></span>
+                </button>
+
+                <div class="pt-2 pb-1 px-3">
+                    <p class="text-xs text-slate-600 font-medium uppercase tracking-wider">Por Estado</p>
+                </div>
+                <template x-for="(label, key) in statusFilters" :key="key">
+                    <button @click="setFilter('status', key)"
+                            :class="filters.status === key ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+                            class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all">
+                        <span class="flex items-center gap-3">
+                            <span :class="statusDot(key)" class="w-2 h-2 rounded-full shrink-0"></span>
+                            <span x-text="label"></span>
+                        </span>
+                        <span class="text-xs text-slate-500" x-text="(stats[key] ?? 0)"></span>
+                    </button>
+                </template>
+
+                <div class="pt-3 pb-1 px-3">
+                    <p class="text-xs text-slate-600 font-medium uppercase tracking-wider">Por Prioridad</p>
+                </div>
+                <template x-for="(label, key) in priorityFilters" :key="key">
+                    <button @click="setFilter('priority', key)"
+                            :class="filters.priority === key ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+                            class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all">
+                        <span class="flex items-center gap-3">
+                            <span :class="priorityDot(key)" class="w-2 h-2 rounded-full shrink-0"></span>
+                            <span x-text="label"></span>
+                        </span>
+                    </button>
+                </template>
+
+                <!-- Knowledge Base (solo usuarios internos) -->
+                <template x-if="user?.is_internal">
+                    <div>
+                        <div class="pt-3 pb-1 px-3">
+                            <p class="text-xs text-slate-600 font-medium uppercase tracking-wider">Recursos</p>
+                        </div>
+                        <a href="/kb.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                            Knowledge Base
+                        </a>
+                    </div>
+                </template>
+
+                <template x-if="user?.role === 'admin'">
+                    <div>
+                        <div class="pt-3 pb-1 px-3">
+                            <p class="text-xs text-slate-600 font-medium uppercase tracking-wider">Administración</p>
+                        </div>
+                        <a href="/agentes.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            Agentes
+                        </a>
+                        <a href="/admin.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Panel Admin
+                        </a>
+                    </div>
+                </template>
+            </nav>
+
+            <div class="p-3 border-t border-slate-800">
+                <button @click="logout()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-hidden flex flex-col">
+
+            <!-- Header -->
+            <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center gap-4 shrink-0">
+                <div class="flex-1">
+                    <h2 class="font-semibold text-white">Panel de Control</h2>
+                    <p class="text-xs text-slate-500 mt-0.5" x-text="`${filteredTickets.length} ticket(s) encontrados`"></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- Buscar -->
+                    <div class="relative">
+                        <svg class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/></svg>
+                        <input type="text" x-model="searchQuery" placeholder="Buscar ticket..."
+                               class="bg-slate-800 border border-slate-700 text-white placeholder-slate-500 pl-9 pr-4 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all w-52">
+                    </div>
+                    <!-- Filtro Empresa -->
+                    <select x-model="filters.company"
+                            class="bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="">Todas las empresas</option>
+                        <template x-for="c in companies" :key="c.id">
+                            <option :value="c.id" x-text="c.name"></option>
+                        </template>
+                    </select>
+                    <!-- Limpiar filtros -->
+                    <button x-show="hasFilters" @click="clearFilters()" class="text-xs text-blue-400 hover:text-blue-300 transition-colors">Limpiar</button>
+                </div>
+            </header>
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-4 gap-px bg-slate-800 shrink-0">
+                <template x-for="(stat, i) in quickStats" :key="i">
+                    <div class="bg-slate-900 px-5 py-3 flex items-center gap-3">
+                        <div :class="stat.color" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold">
+                            <span x-text="stat.value"></span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500" x-text="stat.label"></p>
+                            <p class="text-sm font-semibold text-white" x-text="stat.sub"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Ticket Table -->
+            <div class="flex-1 overflow-auto scrollbar-thin">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-10">
+                        <tr>
+                            <th class="text-left text-xs text-slate-500 font-medium px-6 py-3 uppercase tracking-wider">#</th>
+                            <th class="text-left text-xs text-slate-500 font-medium px-4 py-3 uppercase tracking-wider">Asunto</th>
+                            <th class="text-left text-xs text-slate-500 font-medium px-4 py-3 uppercase tracking-wider">Empresa</th>
+                            <th class="text-left text-xs text-slate-500 font-medium px-4 py-3 uppercase tracking-wider">Prioridad</th>
+                            <th class="text-left text-xs text-slate-500 font-medium px-4 py-3 uppercase tracking-wider">Estado</th>
+                            <th class="text-left text-xs text-slate-500 font-medium px-4 py-3 uppercase tracking-wider">Asignado</th>
+                            <th class="text-left text-xs text-slate-500 font-medium px-4 py-3 uppercase tracking-wider">Creado</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50">
+                        <template x-if="loadingTickets">
+                            <tr><td colspan="8" class="text-center py-20 text-slate-500">Cargando...</td></tr>
+                        </template>
+                        <template x-if="!loadingTickets && filteredTickets.length === 0">
+                            <tr><td colspan="8" class="text-center py-20 text-slate-500">No se encontraron tickets con esos filtros.</td></tr>
+                        </template>
+                        <template x-for="ticket in filteredTickets" :key="ticket.id">
+                            <tr class="hover:bg-slate-900/60 transition-colors cursor-pointer group" @click="openTicketDetail(ticket)">
+                                <td class="px-6 py-4 text-slate-500 font-mono text-xs" x-text="`#${ticket.id}`"></td>
+                                <td class="px-4 py-4 max-w-xs">
+                                    <p class="text-white font-medium truncate group-hover:text-blue-400 transition-colors" x-text="ticket.title"></p>
+                                    <p class="text-slate-500 text-xs truncate" x-text="ticket.description"></p>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span class="text-slate-300 text-xs" x-text="ticket.company_name ?? `Empresa #${ticket.company_id}`"></span>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span :class="priorityBadge(ticket.priority)" class="text-xs font-medium px-2 py-0.5 rounded-full" x-text="priorityLabel(ticket.priority)"></span>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span :class="statusBadge(ticket.status)" class="text-xs font-medium px-2.5 py-1 rounded-full" x-text="statusLabel(ticket.status)"></span>
+                                </td>
+                                <td class="px-4 py-4 text-xs">
+                                    <p class="text-slate-300" x-text="ticket.team_name ? `Equipo: ${ticket.team_name}` : 'Equipo: Sin asignar'"></p>
+                                    <p class="text-slate-500" x-text="ticket.agent_name ? `Agente: ${ticket.agent_name}` : 'Agente: Sin asignar'"></p>
+                                </td>
+                                <td class="px-4 py-4 text-slate-500 text-xs" x-text="formatDate(ticket.created_at)"></td>
+                                <td class="px-4 py-4">
+                                    <svg class="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Detail Drawer -->
+    <div x-show="showDrawer" @click.self="showDrawer = false"
+         x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+        <div x-transition:enter="ease-out duration-300" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+             class="absolute right-0 top-0 bottom-0 w-full max-w-xl bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl" @click.stop>
+
+            <!-- Drawer Header -->
+            <div class="p-5 border-b border-slate-800 flex items-start gap-4">
+                <button @click="showDrawer = false" class="text-slate-400 hover:text-white transition-colors mt-0.5">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-slate-500 font-mono" x-text="`#${selectedTicket?.id}`"></span>
+                        <span :class="statusBadge(selectedTicket?.status)" class="text-xs font-medium px-2 py-0.5 rounded-full" x-text="statusLabel(selectedTicket?.status)"></span>
+                        <span :class="priorityBadge(selectedTicket?.priority)" class="text-xs font-medium px-2 py-0.5 rounded-full" x-text="priorityLabel(selectedTicket?.priority)"></span>
+                    </div>
+                    <h3 class="font-semibold text-white mt-1" x-text="selectedTicket?.title"></h3>
+                </div>
+            </div>
+
+            <!-- Ticket Controls (ServiceDesk) -->
+            <div class="p-4 border-b border-slate-800 space-y-3">
+                <div class="flex gap-3">
+                    <select x-model="editStatus" @change="onStatusChange()"
+                            class="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="new">Nuevo</option>
+                        <option value="in_progress">En Progreso</option>
+                        <option value="resolved">Resuelto</option>
+                        <option value="closed">Cerrado</option>
+                    </select>
+                    <select x-model="editPriority" @change="updateTicketPriority()"
+                            class="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="low">Baja</option>
+                        <option value="medium">Media</option>
+                        <option value="high">Alta</option>
+                        <option value="critical">Crítica</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-3">
+                    <select x-model="editTeam" @change="updateTicketTeam()"
+                            class="flex-1 bg-slate-800 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="">Sin equipo</option>
+                        <template x-for="team in teams" :key="`drawer-team-${team.id}`">
+                            <option :value="String(team.id)" x-text="team.name"></option>
+                        </template>
+                    </select>
+
+                    <button @click="assignToMe()"
+                            class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        Asignarme ticket
+                    </button>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="p-5 border-b border-slate-800 bg-slate-950/30">
+                <p class="text-xs text-slate-500 font-medium mb-2 uppercase tracking-wider">Descripción</p>
+                <p class="text-sm text-slate-300 leading-relaxed" x-text="selectedTicket?.description"></p>
+            </div>
+
+            <!-- Comments Thread -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin" id="sd-chat">
+                <template x-for="comment in comments" :key="comment.id">
+                    <div :class="comment.author_id === user?.id ? 'flex-row-reverse' : 'flex-row'" class="flex items-end gap-3">
+                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0"
+                             x-text="comment.author_name?.[0] ?? '?'"></div>
+                        <div :class="comment.author_id === user?.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'"
+                             class="max-w-xs px-4 py-2.5 rounded-2xl text-sm leading-relaxed">
+                            <p class="text-xs opacity-70 mb-1" x-text="comment.author_name"></p>
+                            <p x-text="comment.text"></p>
+                            <p class="text-xs opacity-50 mt-1" x-text="formatDate(comment.created_at)"></p>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="comments.length === 0" class="text-center text-slate-600 text-sm py-4">Sin mensajes aún.</div>
+            </div>
+
+            <!-- Reply Box -->
+            <div class="p-4 border-t border-slate-800">
+                <form @submit.prevent="submitComment()" class="flex gap-2">
+                    <input type="text" x-model="newComment" placeholder="Responder al ticket..."
+                           class="flex-1 bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <button type="submit" :disabled="!newComment.trim()"
+                            class="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all">
+                        Enviar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resolution Comment Modal -->
+    <div x-show="showResolutionModal" @click.self="cancelResolutionModal()"
+         x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm">
+        <div class="min-h-screen flex items-center justify-center p-4">
+            <div x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 class="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl" @click.stop>
+                <div class="p-5 border-b border-slate-800">
+                    <h3 class="text-lg font-semibold text-white">Resolver Ticket</h3>
+                    <p class="text-sm text-slate-400 mt-1">Agrega un comentario de resolución. Este texto se enviará por email al creador del ticket.</p>
+                </div>
+
+                <div class="p-5">
+                    <textarea x-model="resolutionComment"
+                              placeholder="Escribe el resumen de resolución..."
+                              rows="5"
+                              class="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-y"></textarea>
+                </div>
+
+                <div class="p-5 border-t border-slate-800 flex justify-end gap-3">
+                    <button @click="cancelResolutionModal()"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 transition-all">
+                        Cancelar
+                    </button>
+                    <button @click="confirmResolutionModal()"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-all">
+                        Resolver y Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API = '/api';
+
+    function sdDashboard() {
+        return {
+            user: null, tickets: [], companies: [], teams: [], comments: [],
+            selectedTicket: null, showDrawer: false,
+            activeView: 'all', loadingTickets: false,
+            searchQuery: '', newComment: '',
+            filters: { status: '', priority: '', company: '' },
+            editStatus: '', editPriority: '', editTeam: '',
+            showResolutionModal: false,
+            resolutionComment: '',
+            pendingStatus: '',
+            stats: { total: 0, new: 0, in_progress: 0, resolved: 0, closed: 0 },
+            statusFilters: { new: 'Nuevo', in_progress: 'En Progreso', resolved: 'Resuelto', closed: 'Cerrado' },
+            priorityFilters: { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' },
+
+            async init() {
+                try {
+                    const res = await fetch(`${API}/auth/me`);
+                    if (!res.ok) { window.location.href = '/index.html'; return; }
+                    this.user = await res.json();
+                    if (this.user.role === 'client') { window.location.href = '/client.html'; return; }
+                    await Promise.all([this.loadTickets(), this.loadCompanies(), this.loadTeams()]);
+                } catch(e) { window.location.href = '/index.html'; }
+            },
+
+            async loadTickets() {
+                this.loadingTickets = true;
+                try {
+                    const res = await fetch(`${API}/tickets?_t=${Date.now()}`);
+                    this.tickets = res.ok ? await res.json() : [];
+                    this.updateStats();
+                } finally { this.loadingTickets = false; }
+            },
+
+            async loadCompanies() {
+                try {
+                    const res = await fetch(`${API}/admin/companies`);
+                    this.companies = res.ok ? await res.json() : [];
+                } catch(e) {}
+            },
+
+            async loadTeams() {
+                try {
+                    const res = await fetch(`${API}/teams`);
+                    this.teams = res.ok ? await res.json() : [];
+                } catch(e) {}
+            },
+
+            updateStats() {
+                this.stats.total = this.tickets.length;
+                ['new', 'in_progress', 'resolved', 'closed'].forEach(s => {
+                    this.stats[s] = this.tickets.filter(t => t.status === s).length;
+                });
+            },
+
+            get quickStats() {
+                return [
+                    { label: 'Total Tickets', value: this.stats.total, sub: 'Todos', color: 'bg-slate-800 text-slate-300' },
+                    { label: 'Abiertos', value: this.stats.new, sub: 'Nuevos', color: 'bg-blue-500/20 text-blue-400' },
+                    { label: 'En Progreso', value: this.stats.in_progress, sub: 'Activos', color: 'bg-purple-500/20 text-purple-400' },
+                    { label: 'Resueltos', value: this.stats.resolved, sub: 'Esta semana', color: 'bg-green-500/20 text-green-400' }
+                ];
+            },
+
+            get filteredTickets() {
+                return this.tickets.filter(t => {
+                    const q = this.searchQuery.toLowerCase();
+                    const matchSearch = !q || t.title.toLowerCase().includes(q) || String(t.id).includes(q);
+                    const matchStatus = !this.filters.status || t.status === this.filters.status;
+                    const matchPriority = !this.filters.priority || t.priority === this.filters.priority;
+                    const matchCompany = !this.filters.company || t.company_id == this.filters.company;
+                    return matchSearch && matchStatus && matchPriority && matchCompany;
+                });
+            },
+
+            get hasFilters() {
+                return this.searchQuery || this.filters.status || this.filters.priority || this.filters.company;
+            },
+
+            setFilter(key, value) {
+                this.filters[key] = this.filters[key] === value ? '' : value;
+            },
+            clearFilters() { this.searchQuery = ''; this.filters = { status: '', priority: '', company: '' }; },
+
+            async openTicketDetail(ticket) {
+                this.selectedTicket = ticket;
+                this.editStatus = ticket.status;
+                this.editPriority = ticket.priority;
+                this.editTeam = ticket.assigned_team_id ? String(ticket.assigned_team_id) : '';
+                this.comments = [];
+                this.showDrawer = true;
+                try {
+                    const res = await fetch(`${API}/tickets/${ticket.id}?_t=${Date.now()}`);
+                    if (res.ok) {
+                        const d = await res.json();
+                        this.comments = d.comments || [];
+                        if (d.assigned_team_id) {
+                            this.editTeam = String(d.assigned_team_id);
+                            this.selectedTicket.assigned_team_id = d.assigned_team_id;
+                            this.selectedTicket.team_name = d.team_name;
+                        }
+                    }
+                } catch(e) {}
+                this.$nextTick(() => {
+                    const el = document.getElementById('sd-chat');
+                    if (el) el.scrollTop = el.scrollHeight;
+                });
+            },
+
+            async submitComment() {
+                if (!this.newComment.trim()) return;
+                try {
+                    const res = await fetch(`${API}/tickets/${this.selectedTicket.id}/comment`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ text: this.newComment })
+                    });
+                    if (res.ok) { 
+                        const data = await res.json();
+                        this.newComment = ''; 
+                        if (data.comment) {
+                            this.comments.push(data.comment);
+                            this.$nextTick(() => {
+                                const el = document.getElementById('sd-chat');
+                                if (el) el.scrollTop = el.scrollHeight;
+                            });
+                        } else {
+                            await this.openTicketDetail(this.selectedTicket); 
+                        }
+                    }
+                } catch(e) {}
+            },
+
+            async updateTicketStatus() {
+                try {
+                    const body = { status: this.editStatus };
+
+                    if (this.editStatus === 'resolved' && this.selectedTicket?.status !== 'resolved' && this.resolutionComment.trim()) {
+                        body.resolution_comment = this.resolutionComment.trim();
+                    }
+
+                    await fetch(`${API}/tickets/${this.selectedTicket.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(body)
+                    });
+                    this.selectedTicket.status = this.editStatus;
+                    this.updateStats();
+                } catch(e) {}
+            },
+
+            onStatusChange() {
+                if (!this.selectedTicket) return;
+
+                if (this.editStatus === 'resolved' && this.selectedTicket.status !== 'resolved') {
+                    this.pendingStatus = this.editStatus;
+                    this.editStatus = this.selectedTicket.status;
+                    this.resolutionComment = '';
+                    this.showResolutionModal = true;
+                    return;
+                }
+
+                // Sugerencia automática de texto al cambiar a "en progreso"
+                if (this.editStatus === 'in_progress' && this.selectedTicket.status !== 'in_progress') {
+                    if (!this.newComment.trim()) {
+                        this.newComment = 'Su ticket está siendo analizado por nuestro equipo de soporte, muchas gracias por contactarnos, espere actualizaciones en breve.';
+                    }
+                }
+
+                this.updateTicketStatus();
+            },
+
+            async confirmResolutionModal() {
+                this.editStatus = this.pendingStatus || 'resolved';
+                this.showResolutionModal = false;
+                await this.updateTicketStatus();
+                this.pendingStatus = '';
+                this.resolutionComment = '';
+            },
+
+            cancelResolutionModal() {
+                this.showResolutionModal = false;
+                this.pendingStatus = '';
+                this.resolutionComment = '';
+                this.editStatus = this.selectedTicket?.status ?? this.editStatus;
+            },
+
+            async updateTicketPriority() {
+                try {
+                    await fetch(`${API}/tickets/${this.selectedTicket.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ priority: this.editPriority })
+                    });
+                    this.selectedTicket.priority = this.editPriority;
+                } catch(e) {}
+            },
+
+            async updateTicketTeam() {
+                try {
+                    const body = { assigned_team_id: this.editTeam ? Number(this.editTeam) : null };
+                    const res = await fetch(`${API}/tickets/${this.selectedTicket.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify(body)
+                    });
+
+                    if (res.ok) {
+                        this.selectedTicket.assigned_team_id = body.assigned_team_id;
+                        const selectedTeam = this.teams.find(t => Number(t.id) === Number(body.assigned_team_id));
+                        this.selectedTicket.team_name = selectedTeam ? selectedTeam.name : null;
+                        this.selectedTicket.agent_name = null;
+                    }
+                } catch(e) {}
+            },
+
+            async assignToMe() {
+                if (!this.selectedTicket) return;
+
+                try {
+                    const body = {
+                        assigned_agent_id: this.user.id,
+                        status: this.selectedTicket.status === 'new' ? 'in_progress' : this.selectedTicket.status
+                    };
+
+                    const res = await fetch(`${API}/tickets/${this.selectedTicket.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify(body)
+                    });
+
+                    if (res.ok) {
+                        this.selectedTicket.agent_name = this.user.name;
+                        if (body.status !== this.selectedTicket.status) {
+                            if (body.status === 'in_progress' && !this.newComment.trim()) {
+                                this.newComment = 'Su ticket está siendo analizado por nuestro equipo de soporte, muchas gracias por contactarnos, espere actualizaciones en breve.';
+                            }
+                            this.selectedTicket.status = body.status;
+                            this.editStatus = body.status;
+                            this.updateStats();
+                        }
+                    }
+                } catch(e) {}
+            },
+
+            async logout() {
+                await fetch(`${API}/auth/logout`, { method: 'POST' });
+                localStorage.clear();
+                window.location.href = '/index.html';
+            },
+
+            priorityBadge(p) { return {low:'bg-slate-700 text-slate-300',medium:'bg-yellow-500/20 text-yellow-400',high:'bg-orange-500/20 text-orange-400',critical:'bg-red-500/20 text-red-400'}[p]||''; },
+            priorityLabel(p) { return {low:'Baja',medium:'Media',high:'Alta',critical:'Crítica'}[p]||p; },
+            priorityDot(p) { return {low:'bg-slate-500',medium:'bg-yellow-400',high:'bg-orange-400',critical:'bg-red-400'}[p]||''; },
+            statusBadge(s) { return {new:'bg-blue-500/20 text-blue-400',in_progress:'bg-purple-500/20 text-purple-400',resolved:'bg-green-500/20 text-green-400',closed:'bg-slate-700 text-slate-400'}[s]||''; },
+            statusLabel(s) { return {new:'Nuevo',in_progress:'En Progreso',resolved:'Resuelto',closed:'Cerrado'}[s]||s; },
+            statusDot(s) { return {new:'bg-blue-400',in_progress:'bg-purple-400',resolved:'bg-green-400',closed:'bg-slate-500'}[s]||''; },
+            formatDate(d) { if(!d) return ''; return new Date(d).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+        }
+    }
+    </script>
+</body>
+</html>

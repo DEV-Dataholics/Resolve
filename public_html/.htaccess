@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Bloquear acceso SOLO a archivos fisicos dentro de /api/
+    # (ej: /api/app/Config/Database.php)
+    # Pero PERMITIR rutas virtuales como /api/auth/login (manejadas por CI4)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^api/ - [F,L]
+
+    # Portal personalizado por empresa: /portal/SLUG → portal.html
+    # El JS lee el slug desde window.location.pathname
+    RewriteRule ^portal/[^/]+/?$ portal.html [L]
+
+    # Redirigir todo lo demas a CI4 (index.php)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
