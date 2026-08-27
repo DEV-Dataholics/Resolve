@@ -27,6 +27,7 @@
                 <button @click="activeTab='companies'" :class="activeTab==='companies'?'bg-blue-600 text-white':'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all">🏢 Empresas</button>
                 <button @click="activeTab='users'" :class="activeTab==='users'?'bg-blue-600 text-white':'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all">👤 Usuarios</button>
                 <button @click="activeTab='teams'" :class="activeTab==='teams'?'bg-blue-600 text-white':'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all">👥 Equipos</button>
+                <button @click="activeTab='credentials'" :class="activeTab==='credentials'?'bg-blue-600 text-white':'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all">🔐 Credenciales</button>
                 <div class="pt-2 border-t border-slate-800 mt-2 space-y-1">
                     <a href="/agentes.html" class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all">🤖 Agentes</a>
                     <a href="/servicedesk.html" class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all">← Volver al Panel</a>
@@ -41,7 +42,7 @@
         <div class="flex-1 overflow-hidden flex flex-col">
             <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
                 <div>
-                    <h2 class="font-semibold text-white capitalize" x-text="activeTab === 'companies' ? 'Gestión de Empresas' : (activeTab === 'users' ? 'Gestión de Usuarios' : 'Gestión de Equipos')"></h2>
+                    <h2 class="font-semibold text-white capitalize" x-text="activeTab === 'companies' ? 'Gestión de Empresas' : (activeTab === 'users' ? 'Gestión de Usuarios' : (activeTab === 'teams' ? 'Gestión de Equipos' : 'Gestión de Credenciales'))"></h2>
                     <p class="text-xs text-slate-500 mt-0.5">Solo administradores pueden acceder a esta sección</p>
                 </div>
                 <button @click="openCreateModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">
@@ -198,7 +199,124 @@
                         </div>
                     </template>
                 </div>
+                </div>
+
+                <!-- Credentials Tab -->
+                <div x-show="activeTab === 'credentials'" class="space-y-4">
+                    <template x-for="c in companies" :key="'cred-company-'+c.id">
+                        <div x-show="credentials.filter(cred => cred.company_id === c.id).length > 0" class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-800 bg-slate-800/30">
+                                <h3 class="font-semibold text-white" x-text="c.name"></h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm whitespace-nowrap">
+                                    <thead>
+                                        <tr class="text-slate-400 bg-slate-900/50">
+                                            <th class="px-6 py-3 font-medium">Servicio</th>
+                                            <th class="px-6 py-3 font-medium">Entorno</th>
+                                            <th class="px-6 py-3 font-medium">Usuario / ID</th>
+                                            <th class="px-6 py-3 font-medium">Contraseña / Secreto</th>
+                                            <th class="px-6 py-3 font-medium text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-800/60">
+                                        <template x-for="cred in credentials.filter(cr => cr.company_id === c.id)" :key="cred.id">
+                                            <tr class="hover:bg-slate-800/20 transition-colors">
+                                                <td class="px-6 py-4 text-slate-300 font-medium" x-text="cred.service_name"></td>
+                                                <td class="px-6 py-4">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                          :class="{
+                                                            'bg-green-500/10 text-green-400': cred.environment === 'Prod',
+                                                            'bg-yellow-500/10 text-yellow-400': cred.environment === 'Staging',
+                                                            'bg-slate-500/10 text-slate-400': cred.environment === 'Dev'
+                                                          }" x-text="cred.environment"></span>
+                                                </td>
+                                                <td class="px-6 py-4 text-slate-400" x-text="cred.username || '-'"></td>
+                                                <td class="px-6 py-4 text-slate-300">
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="font-mono bg-slate-950 px-2 py-1 rounded text-xs" x-text="cred.revealedValue ? cred.revealedValue : '••••••••••••••••'"></span>
+                                                        <button @click="toggleReveal(cred)" class="text-slate-500 hover:text-blue-400" :title="cred.revealedValue ? 'Ocultar' : 'Mostrar'">
+                                                            <svg x-show="!cred.revealedValue" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                            <svg x-show="cred.revealedValue" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                                                        </button>
+                                                        <button x-show="cred.revealedValue" @click="copyToClipboard(cred.revealedValue)" class="text-slate-500 hover:text-blue-400" title="Copiar al portapapeles">
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 text-right">
+                                                    <button @click="openEditCredential(cred)" class="text-slate-400 hover:text-blue-400 transition-colors p-1" title="Editar">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                    </button>
+                                                    <button @click="deleteCredential(cred.id)" class="text-slate-400 hover:text-red-400 transition-colors p-1 ml-1" title="Eliminar">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="credentials.length === 0" class="text-center text-slate-500 py-10">
+                        No hay credenciales guardadas.
+                    </div>
+                </div>
             </div>
+        </div>
+    <!-- 🔐 Vault / Credential Modal -->
+    <div x-show="credentialModal.show" x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="credentialModal.show = false">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
+            <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-semibold text-white" x-text="credentialModal.isEditing ? 'Editar Credencial' : 'Nueva Credencial'"></h3>
+                <button @click="credentialModal.show = false" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form @submit.prevent="saveCredential()" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Empresa</label>
+                        <select x-model="credentialModal.company_id" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                            <option value="">Selecciona Empresa</option>
+                            <template x-for="c in companies" :key="c.id">
+                                <option :value="c.id" x-text="c.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Entorno</label>
+                        <select x-model="credentialModal.environment" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                            <option value="Prod">Producción</option>
+                            <option value="Staging">Staging</option>
+                            <option value="Dev">Desarrollo</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1.5">Servicio / Plataforma</label>
+                    <input type="text" x-model="credentialModal.service_name" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Base de Datos MySQL, API AWS, Stripe..." required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1.5">Usuario / ID / Identificador</label>
+                    <input type="text" x-model="credentialModal.username" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Opcional">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1.5">Contraseña / Secreto / API Key</label>
+                    <input type="password" x-model="credentialModal.secret" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" :placeholder="credentialModal.isEditing ? 'Deja en blanco para no cambiar' : 'Secreto...'" :required="!credentialModal.isEditing">
+                    <p class="text-xs text-slate-500 mt-1">Este valor será encriptado de forma segura en la base de datos.</p>
+                </div>
+                <div x-show="credentialModal.error" class="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm" x-text="credentialModal.error"></div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" @click="credentialModal.show = false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium transition-all">Cancelar</button>
+                    <button type="submit" :disabled="credentialModal.saving" class="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-medium transition-all">
+                        <span x-show="!credentialModal.saving">Guardar</span>
+                        <span x-show="credentialModal.saving">Guardando...</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -558,8 +676,9 @@
 
     function adminPanel() {
         return {
-            user: null, companies: [], users: [], teams: [],
+            user: null, companies: [], users: [], teams: [], credentials: [],
             activeTab: 'companies', showModal: false, submitting: false,
+            credentialModal: { show: false, isEditing: false, id: null, company_id: '', service_name: '', environment: 'Prod', username: '', secret: '', error: '', saving: false },
             formError: '', form: {},
             toast: '',
             routingSettings: {
@@ -593,13 +712,14 @@
             },
 
             async loadAll() {
-                const [c, u, t, s] = await Promise.all([
+                const [c, u, t, s, creds] = await Promise.all([
                     fetch(`${API}/admin/companies`).then(r => r.ok ? r.json() : []),
                     fetch(`${API}/admin/users`).then(r => r.ok ? r.json() : []),
                     fetch(`${API}/admin/teams`).then(r => r.ok ? r.json() : []),
-                    fetch(`${API}/admin/settings/ticket-routing`).then(r => r.ok ? r.json() : null)
+                    fetch(`${API}/admin/settings/ticket-routing`).then(r => r.ok ? r.json() : null),
+                    fetch(`${API}/admin/credentials`).then(r => r.ok ? r.json() : [])
                 ]);
-                this.companies = c; this.users = u; this.teams = t;
+                this.companies = c; this.users = u; this.teams = t; this.credentials = creds;
 
                 if (s) {
                     this.routingSettings.intake_team_enabled = !!s.intake_team_enabled;
@@ -702,6 +822,14 @@
             },
 
             openCreateModal() {
+                if (this.activeTab === 'credentials') {
+                    this.credentialModal = {
+                        show: true, isEditing: false, id: null,
+                        company_id: '', service_name: '', environment: 'Prod',
+                        username: '', secret: '', error: '', saving: false
+                    };
+                    return;
+                }
                 this.form = { role: 'client', brand_color: '#2563eb', global_access: false };
                 this.formError = '';
                 this.showModal = true;
@@ -1009,6 +1137,102 @@
                     return `${company.name} (Global)`;
                 }
                 return company.name;
+            },
+
+            // ── Vault Credentials ──────────────────────────────
+            async toggleReveal(cred) {
+                if (cred.revealedValue) {
+                    cred.revealedValue = null;
+                    return;
+                }
+                try {
+                    const res = await fetch(`${API}/admin/credentials/${cred.id}/reveal`, { method: 'POST' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        cred.revealedValue = data.secret;
+                        setTimeout(() => {
+                            cred.revealedValue = null;
+                        }, 30000); // Auto-hide after 30 seconds
+                    } else {
+                        this.showToast('Error al desencriptar credencial');
+                    }
+                } catch(e) {
+                    this.showToast('Error de red');
+                }
+            },
+            
+            async copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    this.showToast('Copiado al portapapeles');
+                } catch (err) {
+                    this.showToast('Error al copiar');
+                }
+            },
+
+            openEditCredential(cred) {
+                this.credentialModal = {
+                    show: true, isEditing: true, id: cred.id,
+                    company_id: cred.company_id, service_name: cred.service_name,
+                    environment: cred.environment, username: cred.username || '',
+                    secret: '', error: '', saving: false
+                };
+            },
+
+            async saveCredential() {
+                this.credentialModal.saving = true;
+                this.credentialModal.error = '';
+
+                const body = {
+                    company_id: this.credentialModal.company_id,
+                    service_name: this.credentialModal.service_name,
+                    environment: this.credentialModal.environment,
+                    username: this.credentialModal.username,
+                    secret: this.credentialModal.secret
+                };
+
+                const method = this.credentialModal.isEditing ? 'PUT' : 'POST';
+                const url = this.credentialModal.isEditing 
+                            ? `${API}/admin/credentials/${this.credentialModal.id}` 
+                            : `${API}/admin/credentials`;
+
+                try {
+                    const res = await fetch(url, {
+                        method: method,
+                        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+                        body: JSON.stringify(body)
+                    });
+                    
+                    const data = await res.json();
+                    
+                    if (res.ok) {
+                        this.credentialModal.show = false;
+                        this.showToast('Credencial guardada de forma segura');
+                        
+                        // Reload credentials
+                        const credsRes = await fetch(`${API}/admin/credentials`);
+                        if (credsRes.ok) this.credentials = await credsRes.json();
+                    } else {
+                        this.credentialModal.error = data.message || JSON.stringify(data.messages) || 'Error al guardar';
+                    }
+                } catch(e) {
+                    this.credentialModal.error = 'Error de conexión';
+                } finally {
+                    this.credentialModal.saving = false;
+                }
+            },
+
+            async deleteCredential(id) {
+                if (!confirm('¿Estás seguro de eliminar esta credencial permanentemente?')) return;
+                try {
+                    const res = await fetch(`${API}/admin/credentials/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        this.credentials = this.credentials.filter(c => c.id !== id);
+                        this.showToast('Credencial eliminada');
+                    }
+                } catch (e) {
+                    this.showToast('Error al eliminar credencial');
+                }
             }
         }
     }

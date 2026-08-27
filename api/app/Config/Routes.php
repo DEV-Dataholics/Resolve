@@ -62,6 +62,12 @@ $routes->group('api', ['filter' => 'auth'], static function ($routes) {
         $routes->get('teams/(:num)/members', 'AdminController::getTeamMembers/$1');
         $routes->put('teams/(:num)/members', 'AdminController::setTeamMembers/$1');
 
+        $routes->get('credentials',            'VaultController::index');
+        $routes->post('credentials',           'VaultController::create');
+        $routes->put('credentials/(:num)',     'VaultController::update/$1');
+        $routes->delete('credentials/(:num)',  'VaultController::delete/$1');
+        $routes->post('credentials/(:num)/reveal', 'VaultController::reveal/$1');
+
         $routes->get('settings/ticket-routing', 'AdminController::getRoutingSettings');
         $routes->put('settings/ticket-routing', 'AdminController::updateRoutingSettings');
 
